@@ -1,5 +1,20 @@
 package fsmbuilder;
 
+import edu.uci.ics.jung.algorithms.layout.CircleLayout;
+import edu.uci.ics.jung.algorithms.layout.Layout;
+import edu.uci.ics.jung.graph.DirectedSparseMultigraph;
+import edu.uci.ics.jung.graph.Graph;
+import edu.uci.ics.jung.graph.util.EdgeType;
+import edu.uci.ics.jung.visualization.BasicVisualizationServer;
+import edu.uci.ics.jung.visualization.decorators.ToStringLabeller;
+import edu.uci.ics.jung.visualization.renderers.Renderer;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Paint;
+import org.apache.commons.collections15.Transformer;
+
 /**
  * Finite-state machine builder
  * @author Zaurbek Gasanov
@@ -12,7 +27,87 @@ public class FSMBuilder extends javax.swing.JFrame {
     public FSMBuilder() {
         initComponents();
     }
-
+    
+    /**
+     * Выводит диаграмму состояний автомата
+     * @param machine Конечный автомат
+     */
+    private void showGraph(FiniteStateMachine machine) {
+        Graph<GraphVertex, GraphEdge> graph = new DirectedSparseMultigraph<>();
+        GraphVertex[] vertices = new GraphVertex[machine.getStates().length];
+        for (int i = 0; i < vertices.length; i++) {
+            vertices[i] = new GraphVertex("" + machine.getStates()[i]);
+        }
+        for (int i = 0; i < machine.getInputSymbols().length; i++) {
+            for (int j = 0; j < machine.getStates().length; j++) {
+                char transition = machine.getStateTransitions()[i][j];
+                if (transition != RegularGrammar.EMPTY_TRANSITION) {
+                    graph.addEdge(new GraphEdge("" + machine.getInputSymbols()[i]),
+                            vertices[j],
+                            vertices[GraphVertex.getVertexIndex(vertices, "" +
+                            transition)], EdgeType.DIRECTED);
+                }
+            }
+        }
+        
+        Layout<GraphVertex, GraphEdge> layout = new CircleLayout<>(graph);
+        layout.setSize(new Dimension(bottomPanel.getWidth() - 50,
+                bottomPanel.getHeight() - 50));
+        
+        BasicVisualizationServer<GraphVertex, GraphEdge> bvs =
+                new BasicVisualizationServer<>(layout);
+        bvs.setPreferredSize(bottomPanel.getSize());
+        
+        final Font graphFont = new Font("Serif", Font.BOLD, 12);
+        
+        Transformer<GraphVertex, Font> vertexFontTransformer;
+        vertexFontTransformer = new Transformer<GraphVertex, Font>() {
+            @Override
+            public Font transform(GraphVertex i) {
+                return graphFont;
+            }
+        };
+        Transformer<GraphVertex, Paint> vertexDrawPaintTransfomer;
+        vertexDrawPaintTransfomer = new Transformer<GraphVertex, Paint>() {
+            @Override
+            public Paint transform(GraphVertex i) {
+                return Color.BLUE;
+            }
+        };
+        
+        Transformer<GraphEdge, Font> edgeFontTransformer;
+        edgeFontTransformer = new Transformer<GraphEdge, Font>() {
+            @Override
+            public Font transform(GraphEdge i) {
+                return graphFont;
+            }
+        };
+        Transformer<GraphEdge, Paint> edgeDrawPaintTransfomer;
+        edgeDrawPaintTransfomer = new Transformer<GraphEdge, Paint>() {
+            @Override
+            public Paint transform(GraphEdge i) {
+                return Color.BLUE;
+            }
+        };
+        
+        bvs.getRenderContext()
+                .setVertexLabelTransformer(new ToStringLabeller());
+        bvs.getRenderContext().setVertexFontTransformer(vertexFontTransformer);
+        bvs.getRenderContext()
+                .setVertexDrawPaintTransformer(vertexDrawPaintTransfomer);
+        bvs.getRenderer().getVertexLabelRenderer()
+                .setPosition(Renderer.VertexLabel.Position.CNTR);
+        
+        bvs.getRenderContext().setEdgeLabelTransformer(new ToStringLabeller());
+        bvs.getRenderContext().setEdgeFontTransformer(edgeFontTransformer);
+        bvs.getRenderContext()
+                .setEdgeDrawPaintTransformer(edgeDrawPaintTransfomer);
+        
+        bottomPanel.setLayout(new BorderLayout());
+        bottomPanel.add(BorderLayout.CENTER, bvs);
+        this.validate();
+    }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -25,19 +120,20 @@ public class FSMBuilder extends javax.swing.JFrame {
         topPanel = new javax.swing.JPanel();
         grammarPanel = new javax.swing.JPanel();
         grammarDefinition = new javax.swing.JLabel();
-        vtLabel = new javax.swing.JLabel();
-        vtTField = new javax.swing.JTextField();
-        vnLabel = new javax.swing.JLabel();
-        vnTField = new javax.swing.JTextField();
-        sLabel = new javax.swing.JLabel();
-        sTField = new javax.swing.JTextField();
-        pArea = new javax.swing.JLabel();
+        terminalsLabel = new javax.swing.JLabel();
+        terminalsField = new javax.swing.JTextField();
+        nonterminalsLabel = new javax.swing.JLabel();
+        nonterminalsField = new javax.swing.JTextField();
+        startSymbolLabel = new javax.swing.JLabel();
+        startSymbolField = new javax.swing.JTextField();
+        productionRulesLabel = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
-        pTArea = new javax.swing.JTextArea();
+        productionRulesArea = new javax.swing.JTextArea();
         buildMachineButton = new javax.swing.JButton();
         machineTablePanel = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
-        jTable1 = new javax.swing.JTable();
+        fsmTable = new javax.swing.JTable();
+        bottomPanel = new javax.swing.JPanel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Finite-state machine builder");
@@ -50,24 +146,29 @@ public class FSMBuilder extends javax.swing.JFrame {
 
         grammarDefinition.setText("<html> Регулярная грамматика <i>G = (VT, VN, P, S)</i>,<br /><b>VT</b> - алфавит терминальных символов,<br /><b>VN</b> - алфавит нетерминальных символов,<br /><b>P</b> - правила вывода,<br /><b>S</b> - начальный символ (цель). </html>");
 
-        vtLabel.setText("VT");
+        terminalsLabel.setText("VT");
 
-        vtTField.setToolTipText("Разделяйте символы пробелами");
+        terminalsField.setToolTipText("Разделяйте символы пробелами");
 
-        vnLabel.setText("VN");
+        nonterminalsLabel.setText("VN");
 
-        vnTField.setToolTipText("Разделяйте символы пробелами");
+        nonterminalsField.setToolTipText("Разделяйте символы пробелами");
 
-        sLabel.setText("S");
+        startSymbolLabel.setText("S");
 
-        pArea.setText("P");
+        productionRulesLabel.setText("P");
 
-        pTArea.setColumns(20);
-        pTArea.setRows(5);
-        pTArea.setToolTipText("Каждое правило записывайте на отдельной строке");
-        jScrollPane1.setViewportView(pTArea);
+        productionRulesArea.setColumns(20);
+        productionRulesArea.setRows(5);
+        productionRulesArea.setToolTipText("Каждое правило записывайте на отдельной строке");
+        jScrollPane1.setViewportView(productionRulesArea);
 
         buildMachineButton.setText("Построить автомат");
+        buildMachineButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                buildMachineButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout grammarPanelLayout = new javax.swing.GroupLayout(grammarPanel);
         grammarPanel.setLayout(grammarPanelLayout);
@@ -82,15 +183,15 @@ public class FSMBuilder extends javax.swing.JFrame {
                             .addComponent(buildMachineButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addGroup(grammarPanelLayout.createSequentialGroup()
                                 .addGroup(grammarPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(vtLabel)
-                                    .addComponent(vnLabel)
-                                    .addComponent(sLabel)
-                                    .addComponent(pArea))
+                                    .addComponent(terminalsLabel)
+                                    .addComponent(nonterminalsLabel)
+                                    .addComponent(startSymbolLabel)
+                                    .addComponent(productionRulesLabel))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(grammarPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(vnTField)
-                                    .addComponent(vtTField)
-                                    .addComponent(sTField)
+                                    .addComponent(nonterminalsField)
+                                    .addComponent(terminalsField)
+                                    .addComponent(startSymbolField)
                                     .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 258, Short.MAX_VALUE))))
                         .addContainerGap())))
         );
@@ -101,20 +202,20 @@ public class FSMBuilder extends javax.swing.JFrame {
                 .addComponent(grammarDefinition, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(grammarPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(vtLabel)
-                    .addComponent(vtTField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(terminalsLabel)
+                    .addComponent(terminalsField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(grammarPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(vnLabel)
-                    .addComponent(vnTField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(nonterminalsLabel)
+                    .addComponent(nonterminalsField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(grammarPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(sLabel)
-                    .addComponent(sTField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(startSymbolLabel)
+                    .addComponent(startSymbolField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(grammarPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(grammarPanelLayout.createSequentialGroup()
-                        .addComponent(pArea)
+                        .addComponent(productionRulesLabel)
                         .addGap(0, 0, Short.MAX_VALUE))
                     .addComponent(jScrollPane1))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -124,18 +225,15 @@ public class FSMBuilder extends javax.swing.JFrame {
 
         machineTablePanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Конечный автомат"));
 
-        jTable1.setModel(new javax.swing.table.DefaultTableModel(
+        fsmTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {},
-                {},
-                {},
-                {}
+
             },
             new String [] {
 
             }
         ));
-        jScrollPane2.setViewportView(jTable1);
+        jScrollPane2.setViewportView(fsmTable);
 
         javax.swing.GroupLayout machineTablePanelLayout = new javax.swing.GroupLayout(machineTablePanel);
         machineTablePanel.setLayout(machineTablePanelLayout);
@@ -169,21 +267,59 @@ public class FSMBuilder extends javax.swing.JFrame {
             .addComponent(grammarPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
 
+        bottomPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Диаграмма состояний"));
+
+        javax.swing.GroupLayout bottomPanelLayout = new javax.swing.GroupLayout(bottomPanel);
+        bottomPanel.setLayout(bottomPanelLayout);
+        bottomPanelLayout.setHorizontalGroup(
+            bottomPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 854, Short.MAX_VALUE)
+        );
+        bottomPanelLayout.setVerticalGroup(
+            bottomPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 257, Short.MAX_VALUE)
+        );
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addComponent(topPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(bottomPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addComponent(topPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 104, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(bottomPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void buildMachineButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buildMachineButtonActionPerformed
+        char[] terminals =
+                StringProcessing.parseSymbols(terminalsField.getText(), " ");
+        char[] nonterminals =
+                StringProcessing.parseSymbols(nonterminalsField.getText(), " ");
+        char startSymbol = startSymbolField.getText().charAt(0);
+        String[] productionRulesAsStrings =
+                StringProcessing.parseLines(productionRulesArea.getText());
+        ProductionRule[] productionRules =
+                new ProductionRule[productionRulesAsStrings.length];
+        for (int i = 0; i < productionRules.length; i++) {
+            productionRules[i] = StringProcessing
+                    .parseProductionRule(productionRulesAsStrings[i]);
+        }
+        RegularGrammar grammar =new RegularGrammar(terminals, nonterminals,
+                productionRules, startSymbol);
+        FiniteStateMachine machine = grammar.toFiniteStateMachine();
+        fsmTable.setModel(new FSMTableModel(machine));
+        fsmTable.getColumnModel().getColumn(0)
+                    .setCellRenderer(new ColorRenderer(Color.GRAY));
+        showGraph(machine);
+    }//GEN-LAST:event_buildMachineButtonActionPerformed
 
     /**
      * @param args the command line arguments
@@ -215,21 +351,22 @@ public class FSMBuilder extends javax.swing.JFrame {
         });
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel bottomPanel;
     private javax.swing.JButton buildMachineButton;
+    private javax.swing.JTable fsmTable;
     private javax.swing.JLabel grammarDefinition;
     private javax.swing.JPanel grammarPanel;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JTable jTable1;
     private javax.swing.JPanel machineTablePanel;
-    private javax.swing.JLabel pArea;
-    private javax.swing.JTextArea pTArea;
-    private javax.swing.JLabel sLabel;
-    private javax.swing.JTextField sTField;
+    private javax.swing.JTextField nonterminalsField;
+    private javax.swing.JLabel nonterminalsLabel;
+    private javax.swing.JTextArea productionRulesArea;
+    private javax.swing.JLabel productionRulesLabel;
+    private javax.swing.JTextField startSymbolField;
+    private javax.swing.JLabel startSymbolLabel;
+    private javax.swing.JTextField terminalsField;
+    private javax.swing.JLabel terminalsLabel;
     private javax.swing.JPanel topPanel;
-    private javax.swing.JLabel vnLabel;
-    private javax.swing.JTextField vnTField;
-    private javax.swing.JLabel vtLabel;
-    private javax.swing.JTextField vtTField;
     // End of variables declaration//GEN-END:variables
 }

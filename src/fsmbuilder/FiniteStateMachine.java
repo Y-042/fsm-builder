@@ -30,4 +30,21 @@ public class FiniteStateMachine {
     public char[] getFinalStates() {
         return finalStates;
     }
+
+    /**
+     * Конструктор класса, инициализирующий все элементы конечного автомата
+     * @param inputSymbols Входные символы
+     * @param states Состояния
+     * @param initialState Начальное состояние
+     * @param stateTransitions Функция переходов
+     * @param finalStates Заключительные состояния
+     */
+    public FiniteStateMachine(char[] inputSymbols, char[] states,
+            char initialState, char[][] stateTransitions, char[] finalStates) {
+        this.inputSymbols = inputSymbols;
+        this.states = states;
+        this.initialState = initialState;
+        this.stateTransitions = stateTransitions;
+        this.finalStates = finalStates;
+    }
 }
